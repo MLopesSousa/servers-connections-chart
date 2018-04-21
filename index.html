@@ -6,6 +6,7 @@ http://blog.thinkst.com/2011/06/simple-graphs-with-arborjs.html
 -->
 
 <head>
+  <meta charset="UTF-8">
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4"
     crossorigin="anonymous">
   <script language="javascript" type="text/javascript" src="req.json"></script>
@@ -24,6 +25,10 @@ http://blog.thinkst.com/2011/06/simple-graphs-with-arborjs.html
       <select class="custom-select" id="node">
   </select>
     </div>
+
+    <ul class="list-group">
+      <li class="list-group-item list-group-item-warning">Requisições feitas pelo Host nas ultimas 12 horas</li>
+    </ul>
 
     <canvas id="viewport" width="1200" height="600"></canvas>
 
@@ -106,7 +111,6 @@ http://blog.thinkst.com/2011/06/simple-graphs-with-arborjs.html
     }
 
     getDataElasticsearch();
-    
   </script>
 </body>
 
