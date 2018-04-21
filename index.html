@@ -59,7 +59,7 @@ http://blog.thinkst.com/2011/06/simple-graphs-with-arborjs.html
 
       for (var i = 0; i < dataLocal.ips.buckets.length; i++) {
         obj['nodes'][dataLocal.ips.buckets[i].key] = { 'color': 'green', 'shape': 'dot' };
-        obj['nodes'][dataLocal.ips.buckets[i].key]['label'] = "/" + dataLocal.ips.buckets[i].key;
+        obj['nodes'][dataLocal.ips.buckets[i].key]['label'] = dataLocal.ips.buckets[i].doc_count + " /" + dataLocal.ips.buckets[i].key;
         obj['edges'][dataLocal.key][dataLocal.ips.buckets[i].key] = {};
       }
 
