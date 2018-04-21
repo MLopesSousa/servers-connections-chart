@@ -1,0 +1,47 @@
+req = {
+ "size": 0,
+  "query": {
+    "filtered": {
+      "query": {
+        "bool": {
+          "should": [
+            {
+              "query_string": {
+                "query": "@fields.clientip:172.30.121.* OR @fields.clientip:172.30.192.*"
+              }
+            }
+          ]
+        }
+      },
+      "filter": {
+        "bool": {
+          "must": [
+            {
+              "range": {
+                "@timestamp": {
+                 "gt" : "now-12h"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "aggs": {
+    "contextos": {
+      "terms": {
+        "field": "@fields.clientip",
+        "size": 1000
+      },
+      "aggs": {
+        "ips": {
+          "terms": {
+            "field": "@fields.contexto.raw",
+            "size": 500
+          }
+        }
+      }
+    }
+  }
+};
