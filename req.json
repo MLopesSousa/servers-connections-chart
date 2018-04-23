@@ -7,7 +7,7 @@ req = {
           "should": [
             {
               "query_string": {
-                "query": "@fields.clientip:172.30.121.* OR @fields.clientip:172.30.192.*"
+                "query": "@fields.clientip:172.30.121.* OR @fields.clientip:172.30.192.* OR @fields.clientip:172.30.68.*"
               }
             }
           ]
