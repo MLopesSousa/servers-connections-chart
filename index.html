@@ -1,5 +1,5 @@
 <html>
-<!-- 
+<!--
 
 http://blog.thinkst.com/2011/06/simple-graphs-with-arborjs.html
 
@@ -9,11 +9,11 @@ http://blog.thinkst.com/2011/06/simple-graphs-with-arborjs.html
   <meta charset="UTF-8">
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4"
     crossorigin="anonymous">
-  <script language="javascript" type="text/javascript" src="req.json"></script>
-  <script language="javascript" type="text/javascript" src="jquery.min.js"></script>
-  <script language="javascript" type="text/javascript" src="arbor.js"></script>
-  <script language="javascript" type="text/javascript" src="graphics.js"></script>
-  <script language="javascript" type="text/javascript" src="renderer.js"></script>
+  <script language="javascript" type="text/javascript" src="./req.json"></script>
+  <script language="javascript" type="text/javascript" src="./jquery.min.js"></script>
+  <script language="javascript" type="text/javascript" src="./arbor.js"></script>
+  <script language="javascript" type="text/javascript" src="./graphics.js"></script>
+  <script language="javascript" type="text/javascript" src="./renderer.js"></script>
 </head>
 
 <body>
@@ -23,11 +23,11 @@ http://blog.thinkst.com/2011/06/simple-graphs-with-arborjs.html
         <button class="btn btn-outline-secondary" type="button" onclick="buildGraph()">GO</button>
       </div>
       <select class="custom-select" id="node">
-  </select>
+      </select>
     </div>
 
     <ul class="list-group">
-      <li class="list-group-item list-group-item-warning">Requisições feitas pelo Host nas ultimas 12 horas</li>
+      <li class="list-group-item list-group-item-warning">RequisiÃ§Ãµes feitas pelo Host nas ultimas 12 horas</li>
     </ul>
 
     <canvas id="viewport" width="1200" height="600"></canvas>
@@ -35,41 +35,46 @@ http://blog.thinkst.com/2011/06/simple-graphs-with-arborjs.html
   </div>
 
   <script language="javascript" type="text/javascript">
-    data = "";
+    var node;
+    var data;
+
     sys = arbor.ParticleSystem(50, 600);
     sys.parameters({ gravity: true });
     sys.renderer = Renderer("#viewport");
 
-    var buildSelect = function (nodes) {
-      for (var i = 0; i < nodes.length; i++) {
-        $("#node").append('<option>' + nodes[i] + '</option>');
+    // misc
+
+    var getUrlParameter = function getUrlParameter(sParam) {
+      var sPageURL = decodeURIComponent(window.location.search.substring(1)),
+        sURLVariables = sPageURL.split('&'),
+        sParameterName,
+        i;
+
+      for (i = 0; i < sURLVariables.length; i++) {
+        sParameterName = sURLVariables[i].split('=');
+
+        if (sParameterName[0] === sParam) {
+          return sParameterName[1] === undefined ? true : sParameterName[1];
+        }
       }
-    }
+    };
 
-    var getNodes = function () {
-      var retorno = [];
-      for (var i = 0; i < data.length; i++) {
-        retorno.push(data[i]['key']);
-      }
+    // Contruir grafico
 
-      return retorno;
-    }
-
-    var buildObject = function (dataLocal) {
+    var buildObject = function (data) {
       var obj = { 'nodes': {}, 'edges': {} };
 
-      obj['nodes'][dataLocal.key] = { 'color': 'red', 'shape': 'dot' };
-      obj['nodes'][dataLocal.key]['label'] = dataLocal.key;
-      obj['edges'][dataLocal.key] = {};
+      obj['nodes'][data.key] = { 'color': 'red', 'shape': 'dot' };
+      obj['nodes'][data.key]['label'] = data.key;
+      obj['edges'][data.key] = {};
 
-      for (var i = 0; i < dataLocal.ips.buckets.length; i++) {
-        obj['nodes'][dataLocal.ips.buckets[i].key] = { 'color': 'green', 'shape': 'dot' };
-        obj['nodes'][dataLocal.ips.buckets[i].key]['label'] = dataLocal.ips.buckets[i].doc_count + " /" + dataLocal.ips.buckets[i].key;
-        obj['edges'][dataLocal.key][dataLocal.ips.buckets[i].key] = {};
+      for (var i = 0; i < data.ips.buckets.length; i++) {
+        obj['nodes'][data.ips.buckets[i].key] = { 'color': 'green', 'shape': 'dot' };
+        obj['nodes'][data.ips.buckets[i].key]['label'] = data.ips.buckets[i].doc_count + " /" + data.ips.buckets[i].key;
+        obj['edges'][data.key][data.ips.buckets[i].key] = {};
       }
 
-      obj['edges'][dataLocal.key][{ length: .75, pointSize: 3 }];
-      console.log(JSON.stringify(obj));
+      obj['edges'][data.key][{ length: .75, pointSize: 3 }];
       return obj;
     }
 
@@ -85,10 +90,26 @@ http://blog.thinkst.com/2011/06/simple-graphs-with-arborjs.html
       var node = $("#node").val();
 
       if (node) {
-        dataLocal = getData(node);
         sys.prune();
-        sys.graft(buildObject(dataLocal));
+        sys.graft(buildObject(getData(node)));
       }
+    }
+
+    // Construir home
+
+    var buildSelect = function (nodes) {
+      for (var i = 0; i < nodes.length; i++) {
+        $("#node").append('<option value="' + nodes[i] +'">' + nodes[i] + '</option>');
+      }
+    }
+
+    var getNodes = function (data) {
+      var retorno = [];
+      for (var i = 0; i < data.length; i++) {
+        retorno.push(data[i]['key']);
+      }
+
+      return retorno;
     }
 
     var getDataElasticsearch = function () {
@@ -96,18 +117,19 @@ http://blog.thinkst.com/2011/06/simple-graphs-with-arborjs.html
       $.ajax({
         type: 'POST',
         traditional: true,
-        url: 'http://www2.sefaz.ce.gov.br/elasticsearch/logstash-*/_search',
+        url: 'http://172.30.121.216:80/logstash-*/_search',
         data: JSON.stringify(req),
         success: function (data_raw) {
-          console.log("Data Loaded: " + JSON.stringify(data_raw['aggregations']['contextos']['buckets']));
           data = data_raw['aggregations']['contextos']['buckets'];
+          buildSelect(getNodes(data));
 
-          buildSelect(getNodes());
-
+          // auto
+          if(getUrlParameter("host")) {
+            $("#node").val(getUrlParameter("host"));
+            buildGraph();
+          }
         }
       });
-
-
     }
 
     getDataElasticsearch();
