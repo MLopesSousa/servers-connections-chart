@@ -1,0 +1,205 @@
+<html>
+<!-- 
+
+http://blog.thinkst.com/2011/06/simple-graphs-with-arborjs.html
+
+-->
+
+<head>
+  <meta charset="UTF-8">
+  <title> APP 01 </title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4"
+    crossorigin="anonymous">
+  <script language="javascript" type="text/javascript" src="./req.json"></script>
+  <script language="javascript" type="text/javascript" src="./jquery.min.js"></script>
+  <script language="javascript" type="text/javascript" src="./arbor.js"></script>
+  <script language="javascript" type="text/javascript" src="./graphics.js"></script>
+  <script language="javascript" type="text/javascript" src="./renderer.js"></script>
+</head>
+
+<body>
+
+
+  <div class="container">
+
+    <div class="row">
+      <div class="col-md-12">
+        <div class="input-group mb-3">
+          <div class="input-group-prepend">
+            <button class="btn btn-outline-secondary" type="button" onclick="buildGraph()">GO</button>
+          </div>
+          <select class="custom-select" id="node"></select>
+        </div>
+
+        <ul class="list-group">
+          <li class="list-group-item list-group-item-warning">Requisições feitas pelo Host nas ultimas 12 horas</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-3" style="padding-top: 10px; padding-left: 20px">
+        Aplicações no host:
+
+        <ul id="applications" class="list-group list-group-flush" style="font-size: 13px">
+          <!-- <li class="list-group-item list-group-item-warning"></li> -->
+        </ul>
+      </div>
+      <div class="col-md-9">
+        <canvas id="viewport" width="600" height="600"></canvas>
+      </div>
+    </div>
+
+
+  </div>
+
+  <!-- -->
+
+
+  <script language="javascript" type="text/javascript">
+    var node;
+    var data;
+
+    sys = arbor.ParticleSystem(50, 600);
+    sys.parameters({ gravity: true });
+    sys.renderer = Renderer("#viewport");
+
+    // misc
+
+    var getUrlParameter = function getUrlParameter(sParam) {
+      var sPageURL = decodeURIComponent(window.location.search.substring(1)),
+        sURLVariables = sPageURL.split('&'),
+        sParameterName,
+        i;
+
+      for (i = 0; i < sURLVariables.length; i++) {
+        sParameterName = sURLVariables[i].split('=');
+
+        if (sParameterName[0] === sParam) {
+          return sParameterName[1] === undefined ? true : sParameterName[1];
+        }
+      }
+    };
+
+    // Contruir grafico
+
+    var getServerApplications = function (server) {
+      console.log(server);
+      $.ajax({
+        type: 'GET',
+        url: 'http://172.30.121.230:8080/Observer/v2/servers/server/' + server,
+        success: function (data_raw) {
+          $("#applications").empty();
+          for (var i = 0; i < data_raw[0]['application'].length; i++) {
+            $("#applications").append('<li class="list-group-item">' + JSON.stringify(data_raw[0]['application'][i]).replace(/"/g, '') + '</li>');
+
+          }
+        }
+      });
+    }
+    var buildObject = function (data) {
+      console.log(JSON.stringify(data));
+
+      var obj = { 'nodes': {}, 'edges': {} };
+
+      obj['nodes'][data.key] = { 'color': 'red', 'shape': 'dot' };
+      obj['nodes'][data.key]['label'] = data.key;
+      obj['edges'][data.key] = {};
+
+      for (var i = 0; i < data.nodes.ips.buckets.length; i++) {
+       obj['nodes'][data.nodes.ips.buckets[i].key] = { 'color': 'green', 'shape': 'dot' };
+       obj['nodes'][data.nodes.ips.buckets[i].key]['label'] = data.nodes.ips.buckets[i].doc_count + " /" + data.nodes.ips.buckets[i].key;
+       obj['edges'][data.key][data.nodes.ips.buckets[i].key] = {};
+      }
+
+      obj['edges'][data.key][{ length: .75, pointSize: 3 }];
+      return obj;
+    }
+
+    var getData = function (node) {
+      _req = req2;
+      _req.query.filtered.query.bool.should[0].query_string.query = '@fields.agent:"' + node + '"';
+
+      $.ajax({
+        type: 'POST',
+        traditional: true,
+        url: 'http://172.30.121.216:80/logstash-*/_search',
+        data: JSON.stringify(_req),
+        success: function (data_raw) {
+          data = data_raw['aggregations']['contextos']['buckets'];
+          obj = {};
+          obj['key'] = node;
+          obj['nodes'] = data[0]
+
+          sys.graft(buildObject(obj));
+          getServerApplications(obj['key']);
+        }
+      });   
+    }
+
+    var buildGraph = function () {
+      var node = $("#node").val();
+
+      if (node) {
+        sys.prune();
+        getData(node)
+      }
+    }
+
+    // Construir home
+
+    var buildSelect = function (nodes) {
+      for (var i = 0; i < nodes.length; i++) {
+        $("#node").append('<option value="' + nodes[i] + '">' + nodes[i] + '</option>');
+      }
+    }
+
+    var filtro = function (string) {
+      if (string) {
+        if (
+          string.includes("jb") || string.includes("int") || string.includes("inst") &&
+          !string.includes("Java") &&
+          !string.includes("Mozilla") &&
+          !string.includes("Axis") &&
+          !string.includes("Microsoft") &&
+          !string.includes("check_http")
+        ) {
+          return true;
+        }
+      }
+    }
+
+    var getNodes = function (data) {
+      var retorno = [];
+      for (var i = 0; i < data.length; i++) {
+        _data = data[i]['key'].replace(/"/g,'').split(" ")[0];
+
+        if(filtro(_data)) {
+          retorno.push(_data);
+        }
+      }
+
+      return retorno;
+    }
+
+    var getDataElasticsearch = function () {
+
+      $.ajax({
+        type: 'POST',
+        traditional: true,
+        url: 'http://172.30.121.216:80/logstash-*/_search',
+        data: JSON.stringify(req),
+        success: function (data_raw) {
+          data = data_raw['aggregations']['contextos']['buckets'];
+          buildSelect(getNodes(data));
+
+          //buildGraph();
+        }
+      });
+    }
+
+    getDataElasticsearch();
+  </script>
+</body>
+</html>
+
